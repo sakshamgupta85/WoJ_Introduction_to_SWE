@@ -1,0 +1,64 @@
+<!DOCTYPE html> 
+
+<html>
+<title>
+
+	Wheel of Jeopardy!
+
+</title>
+
+<link rel="icon" href="favicon.ico" >
+<head>
+	<center><img src="513px-Wheel_of_Fortune_-_Season_26_-_Round_4.svg 2.png" alt="Site Logo", height = 300, width = 300></center>
+</head>
+<center><body>
+	<h1>Welcome to the Wheel Jeopardy!</h1>
+	<h2>
+		Please enter the names of players 1 & 2 here:
+	</h2>
+
+
+	<style>
+		form{
+			width:400px;
+			margin-left: auto;
+			margin-right: auto;
+		}
+		body{
+			background-color: lightblue;
+		}
+	</style>
+
+	<form id = "form">
+		<fieldset>
+			<label for="playerOne">Player One:</label><br>
+			<input type="text" id="playerOne" name="playerOne"><br><br>
+			<label for="playerTwo">Player Two:</label><br>
+			<input type="text" id="playerTwo" name="playerTwo"><br><br>
+			<input type="submit" value="Submit">
+		</form></fieldset>
+
+		<script>
+
+			const form = document.getElementById("form");
+			const playerOne = document.getElementById("playerOne");
+			const playerTwo = document.getElementById("playerTwo");
+
+			form.addEventListener("submit", function(e){
+				e.preventDefault();
+
+				const playerOneValue = playerOne.value;
+				const playerTwoValue = playerTwo.value;
+
+				localStorage.setItem("player-One", playerOneValue);
+				localStorage.setItem("player-Two", playerTwoValue);
+
+				window.location.href = "wheel.html";
+
+			})
+
+		</script>
+
+		<a href="WheelOfJeopardy.pdf">Rulebook</a>
+	</body></center>
+	</html>
