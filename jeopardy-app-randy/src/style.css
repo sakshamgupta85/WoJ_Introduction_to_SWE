@@ -1,0 +1,157 @@
+    /* Set up the main panel for the wheel */
+    * {
+        margin: 0;
+        padding: 0;
+        border: none;
+        outline: none;
+      }
+      .wrapper {
+        position: relative;
+        height: 200px;
+        width: 200px;
+        padding: 20px;
+        margin: 20px;
+        background-color: #c0381f;
+        box-shadow: #000000 0px 0px 10px;
+        border-radius: 50%;
+      }
+      .panel {
+        position: relative;
+        height: 200px;
+        width: 200px;
+        background-color: #b7b7b7;
+        border-radius: 100px;
+      }
+      .pointer {
+        position: absolute;
+        left: 79px;
+        top: 79px;
+        z-index: 10;
+        height: 30px;
+        width: 30px;
+        padding: 6px;
+        color: #fff899;
+        line-height: 15px;
+        font-size: 12px;
+        text-align: center;
+        background-color: #dc5b5b;
+        border-radius: 50%;
+        border: 1px solid #c0381f;
+        transition: transform 3s cubic-bezier(.2,.93,.43,1);
+  
+      }
+  
+      .pointer::after {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: -24px;
+        border-width: 12px 6px;
+        border-style: solid;
+        border-color: transparent;
+        border-bottom-color: #c0381f;
+      }
+  
+      /* CSS for different sectors on the panel */
+      .sector {
+        position: absolute;
+        width: 100px;
+        height: 200px;
+        border-radius: 0px 100px 100px 0;
+        overflow: hidden;
+        left: 100px;
+        top: 0px;
+        transform-origin: left center;
+      }
+  
+      .sector:nth-child(1) {
+        transform: rotate(0deg);
+      }
+      .sector:nth-child(2) {
+        transform: rotate(20deg);
+      }
+      .sector:nth-child(3) {
+        transform: rotate(40deg);
+      }
+      .sector:nth-child(4) {
+        transform: rotate(60deg);
+      }
+      .sector:nth-child(5) {
+        transform: rotate(80deg);
+      }
+      .sector:nth-child(6) {
+        transform: rotate(100deg);
+      }
+      .sector:nth-child(7) {
+        transform: rotate(120deg);
+      }
+      .sector:nth-child(8) {
+        transform: rotate(140deg);
+      }
+      .sector:nth-child(9) {
+        transform: rotate(160deg);
+      }
+      .sector:nth-child(10) {
+        transform: rotate(180deg);
+      }
+      .sector:nth-child(10) {
+        transform: rotate(180deg);
+      }
+      .sector:nth-child(10) {
+        transform: rotate(180deg);
+      }
+      .sector:nth-child(11) {
+        transform: rotate(200deg);
+      }
+      .sector:nth-child(12) {
+        transform: rotate(220deg);
+      }
+      .sector:nth-child(13) {
+        transform: rotate(240deg);
+      }
+      .sector:nth-child(14) {
+        transform: rotate(260deg);
+      }
+      .sector:nth-child(15) {
+        transform: rotate(280deg);
+      }
+      .sector:nth-child(16) {
+        transform: rotate(300deg);
+      }
+      .sector:nth-child(17) {
+        transform: rotate(320deg);
+      }
+      .sector:nth-child(18) {
+        transform: rotate(340deg);
+      }
+  
+      /* Set color for even and odd */
+      .sector:nth-child(even) .sector-inner {
+        background: #fef6e0;
+      }
+      .sector:nth-child(odd) .sector-inner {
+        background: #ffffff;
+      }
+  
+      /* Set style for inner sector */
+      .sector-inner {
+        text-align: center;
+        display: block;
+        width: 40px;
+        padding: 5px 3px 0 57px;
+        height: 195px;
+        transform: translateX(-100px) rotate(20deg);
+        transform-origin: right center;
+        border-radius: 100px 0 0 100px;
+      }
+  
+      .sector-inner span {
+        display: block;
+        transform-origin: center;
+        transform: rotate(0deg);
+        color: #d46854;
+      }
+  
+      .result{
+          margin: 20px 60px;
+      }
