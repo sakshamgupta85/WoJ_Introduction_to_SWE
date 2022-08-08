@@ -1,1 +1,0 @@
-This is the homepage of the Wheel of Jeopardy. It takes in user data and stores it locally so that the wheel page can pick up the user data. The rulebook is currently just the instructions for the game, but will be updated ASAP. 
