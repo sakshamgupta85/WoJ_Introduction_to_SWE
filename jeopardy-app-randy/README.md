@@ -10,9 +10,18 @@ Please open the src folder for all the source code of the wheel page. It has the
 3. Simply click `index.html` file and it will redirect you to your default web browser
 4. Click the `spin` button and check out the result
 
+# Update on August 9th
+1. Add reset button to change turns when needed
+2. Rework on the format of the wheel for a better representation
+3. Add jeopardy page for later use
+4. Add two players' name to the wheel page
+
 # Demo
-The basic version will have a result similar to the following. Stay tuned for more updates.
+The basic version will have a result similar to the following. 
 
 ![demo](demo.gif)
 
+The updated version of wheel page will be similar to the following. Stay tuned for more updates.
+
+![demo-updated](demo-updated.gif)
 
