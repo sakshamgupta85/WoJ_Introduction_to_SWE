@@ -50,13 +50,13 @@ pointer.onclick = function(){
     onRotation = true;
     let nextStatus = getOptions();
     console.log(checkJepordy(nextStatus));
-    // if(checkJepordy(nextStatus.text)){
-    //     location.href = "result.html"
+    if(checkJepordy(nextStatus.text)){
+        location.href = "result.html"
+    }
+    // while (nextStatus.text == options[15]){
+    //     pointer.onclick();
     // }
-    // if (nextStatus.text == options[15]){
 
-    // }
-    
     result.innerText = "Result: " + nextStatus.text;
     result.style.display = 'block';
     pointer.style.transform = `rotateZ(${nextStatus.deg}deg)`;
@@ -74,9 +74,18 @@ resetButton.onclick = function(){
     if(player1){
         player1 = false;
         getWhoseTurn();
+        reset();
     }else{
         player1 = true;
         getWhoseTurn();
+        reset();
     }
 };
 
+let reset = function(){
+    
+    result.innerText = "";
+    // setTimeout(() => {
+    //     pointer.onclick();
+    // }, 5000);
+};
