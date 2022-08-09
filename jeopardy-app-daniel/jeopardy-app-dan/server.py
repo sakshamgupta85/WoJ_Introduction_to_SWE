@@ -98,6 +98,19 @@ def get_board_html(board):
     to_return += "</table>"
     return to_return
 
+def get_scores_html(scores):
+    players = sorted(scores.keys())
+    to_return = "<p>"
+    for player in players:
+        to_return += "Player " + player + " has scored " + str(scores[player]) + " points. "
+    to_return += "</p>"
+
+    return to_return
+
+def get_players_html(players):
+    return ""
+
+
 # takes as input for construction
 # question : str of question being asked
 # answer: str of answer to that question
@@ -111,6 +124,12 @@ class JeopardyQuestion():
 
     def validate_answer(self, given):
         return self.answer.lower() == given.lower()
+
+    def reward_guess(self, guess):
+        if self.validate_answer(guess):
+            return self.value
+        else:
+            return -1 * self.value
 
 # this class is of the jeopardy board for the current game
 # questions: dictionary of string to lsit of jeopardy questions
@@ -127,8 +146,13 @@ class JeopardyGame():
         self.scores = {player:0 for player in players}
         self.curr_player = players[0]
         self.board = make_new_board(1)
-        self.spins_remaining = 50
-    
+        self.spins_remaining = 5
+        self.curr_question = None
+    def next_player(self):
+        if self.curr_player == self.players[0]:
+            self.curr_player = self.players[1]
+        else:
+            self.curr_player = self.players[0]
 # when the first request is sent, a new jeopardy board is created
 # as well as a new ID for the players sent in the request
 def spin_and_update(board):
@@ -146,7 +170,7 @@ def spin_and_update(board):
                 return (board, q)
             else:
                 i += 1
-    return None
+    return None, None
     
 
 
@@ -173,12 +197,15 @@ async def setup(request: Request):
         not request.session.get("uid") in GLOBAL_CACHE
     ):
         print("leaving lol")
-        server_board = make_new_board(1)
+        # hardcoded but this needs to be updated later
+        curr_game = JeopardyGame(["Tom", "Jerry"])
+        server_board = curr_game.board#make_new_board(1)
         board = get_board_html(server_board)
         new_id =  str(uuid.uuid4())
-        GLOBAL_CACHE[new_id] = server_board
+        GLOBAL_CACHE[new_id] = curr_game
         currently_playing = "<p>Currently playing : Tom, Jerry</p>"
-        return {"board": board, "players": currently_playing, "uid": new_id}
+        scores = get_scores_html(curr_game.scores)
+        return {"board": board, "players": currently_playing, "uid": new_id, "scores":scores, "spins_rem": curr_game.spins_remaining}
     
     return None
 
@@ -200,12 +227,21 @@ async def spin(request: Request):
         a = "string"
         print(a)
         print(GLOBAL_CACHE)
-        curr_board = GLOBAL_CACHE[curr_id]
+        curr_game = GLOBAL_CACHE[curr_id]
+        curr_board = curr_game.board
         server_board, curr_q = spin_and_update(curr_board)
+        if not server_board:
+            server_board = make_new_board(2)
+            server_board, curr_q = spin_and_update(server_board)
         board = get_board_html(server_board)
-        GLOBAL_CACHE[curr_id] = server_board
+        curr_game.board = server_board
+        curr_game.curr_question = curr_q
+        curr_game.spins_remaining -= 1
         currently_playing = "<p>Currently playing : Tom, Jerry</p>"
-        return {"board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_q.question}
+        curr_scores = get_scores_html(curr_game.scores)
+        GLOBAL_CACHE[curr_id] = curr_game
+        return {"board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_q.question,\
+             "scores":curr_scores, "spins_rem": curr_game.spins_remaining}
     
     return None
 
@@ -214,6 +250,8 @@ async def spin(request: Request):
 async def guess(request: Request):
     print(vars(request))
     body = await request.body()
+    split = body.decode("utf-8").split(",")
+    id, guess = split[0], split[1]
     print("how do i get uid : ", body)
     # we need to create a new id to send back for future uses
     # also need to put this id in the cache mapping to the 
@@ -229,17 +267,41 @@ async def guess(request: Request):
         not request.session.get("uid") or
         not request.session.get("uid") in GLOBAL_CACHE
     ):
-        curr_id = str(body.decode("utf-8"))[1:-1]
+        curr_id = id[2:-1]#str(id.decode("utf-8"))[1:-1]
         print(curr_id)
         a = "string"
         print(a)
         print(GLOBAL_CACHE)
-        curr_board = GLOBAL_CACHE[curr_id]
-        server_board, curr_q = spin_and_update(curr_board)
-        board = get_board_html(server_board)
-        GLOBAL_CACHE[curr_id] = server_board
+        curr_game = GLOBAL_CACHE[curr_id]
+        curr_board = curr_game.board
+        curr_question = curr_game.curr_question
+        print("quesrion : ", curr_question.question)
+        guess = guess[1:-2]
+        print("they guessed : ", guess)
+        # they placed a guess
+        # let's validate it with the current question
+        # and then let's update teh scores accordingly
+        # and send the response to the frontend
+        # server_board, curr_q = spin_and_update(curr_board)
+        board = get_board_html(curr_board)
+        
         currently_playing = "<p>Currently playing : Tom, Jerry</p>"
-        return {"board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_q.question}
+        score_reward = curr_question.reward_guess(guess)
+        curr_scores = curr_game.scores
+        curr_player = curr_game.curr_player
+        curr_game.next_player()
+        curr_scores[curr_player] += score_reward
+
+        curr_scores_resp = get_scores_html(curr_scores)
+        if curr_game.spins_remaining == 0:
+            if curr_scores[curr_game.players[0]] > curr_scores[curr_game.players[1]]:
+                winner = curr_game.players[0]
+            else:
+                winner = curr_game.players[1]
+            return {"game_over": True, "winner": winner}
+        GLOBAL_CACHE[curr_id] = curr_game
+        return {"board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_question.question, \
+            "scores":curr_scores_resp, "spins_rem": curr_game.spins_remaining}
     
     return None
 

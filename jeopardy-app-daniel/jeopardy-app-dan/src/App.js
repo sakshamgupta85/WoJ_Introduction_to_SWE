@@ -77,7 +77,8 @@ class App extends Component {
       turns_rem: null,
       submit_answer: null,
       guess: null,
-      curr_question: null
+      curr_question: null,
+      scores:null
     };
     this.createGame = this.createGame.bind(this);
     this.spinWheel = this.spinWheel.bind(this);
@@ -100,15 +101,18 @@ class App extends Component {
     // will get parsed out of this response from the backend
     // this.state.board = 1;
     been_set_up = true;
+    const scores = to_use.scores;
+    const rem = to_use.spins_rem;
     this.setState({
         board: board,
         wheel: 1,
         scores: null,
         players: players,
-        turns_rem: null,
+        turns_rem: rem,
         submit_answer: null,
         guess: null,
-        curr_question: null
+        curr_question: null,
+        scores:scores
     })
     
     console.log("resecived response");
@@ -136,15 +140,18 @@ class App extends Component {
       const board = to_use.board;
       const players = to_use.players;
       const quest = to_use.curr_q;
+      const scores = to_use.scores;
+      const rem = to_use.spins_rem;
       this.setState({
         board: board,
         wheel: null,
         scores: null,
         players: players,
-        turns_rem: null,
+        turns_rem: rem,
         submit_answer: 1,
         guess: null,
-        curr_question: quest
+        curr_question: quest,
+        scores:scores
     })
 
     
@@ -166,16 +173,23 @@ doChange(event){
     const to_use = await res.json();
     console.log("RESULT OF SPINNING");
     console.log(to_use);
+    if (to_use.game_over) {
+
+        alert("Winner : ", to_use.winner);
+    }
     const board = to_use.board;
     const players = to_use.players;
+    const scores = to_use.scores;
+    const rem = to_use.spins_rem;
     this.setState({
       board: board,
-      wheel: null,
+      wheel: 1,
       scores: null,
       players: players,
-      turns_rem: null,
-      submit_answer: 1,
-      guess: null
+      turns_rem: rem,
+      submit_answer: null,
+      guess: null,
+      scores:scores
   })
   }
 
@@ -199,11 +213,22 @@ doChange(event){
                 <div dangerouslySetInnerHTML={{ __html: this.state.players }}>
                 {/* {this.state.board} */}
             
-          </div>
+                </div>
             ) : (
-                <p>[Player names form goes here]</p>
+                <div>
+                <p>Enter names, separated by a space.</p>
+                <input>
+                </div>
             )}
-
+            {this.state.turns_rem !== null ? (
+                
+                <div><p>Spins remaining : </p><div dangerouslySetInnerHTML={{ __html: this.state.turns_rem }}></div>
+                {/* {this.state.board} */}
+            
+                </div>
+            ) : (
+                ""
+            )}
             <br></br>
             {been_set_up ? (
                 ""
@@ -211,6 +236,14 @@ doChange(event){
                 <Button color="primary" onClick={this.createGame}>
                 Play!
               </Button>
+            )}
+            {this.state.scores !== null ? (
+              <div dangerouslySetInnerHTML={{ __html: this.state.scores }}>
+                  {/* {this.state.board} */}
+              
+            </div>
+            ) : (
+              ""
             )}
             {this.state.board !== null ? (
               <div dangerouslySetInnerHTML={{ __html: this.state.board }}>
