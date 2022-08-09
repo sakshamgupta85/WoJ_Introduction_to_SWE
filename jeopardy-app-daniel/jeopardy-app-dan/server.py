@@ -1,4 +1,5 @@
 import os
+from pickle import GLOBAL
 import uuid
 import math
 import argparse
@@ -15,6 +16,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from fastapi import FastAPI
 from pydantic import BaseModel
+import copy
 
 PORT = int(os.environ.get("PORT", "8666"))
 OUTPUT_DIR = Path("outputs/")
@@ -59,15 +61,15 @@ def make_new_board(round):
             update = 200
         curr_points = update
         for q_a in qs:
-            print("pls be a tuple: ", q_a)
+            # print("pls be a tuple: ", q_a)
             q = q_a[0]
             a = q_a[1]
             to_app = JeopardyQuestion(q,a,curr_points)
             to_map.append(to_app)
             curr_points += update
         questions[cat] = to_map
-    print(questions)
-    print(to_draw)
+    # print(questions)
+    # print(to_draw)
     return JeopardyBoard(questions, to_draw)
 
 
@@ -95,56 +97,6 @@ def get_board_html(board):
     to_return += "</tbody>"
     to_return += "</table>"
     return to_return
-    # return "<table><tbody><tr>\
-    #               <th>Category 1</th>\
-    #               <th>Category 2</th>\
-    #               <th>Category 3</th>\
-    #               <th>Category 4</th>\
-    #               <th>Category 5</th>\
-    #               <th>Category 6</th>\
-    #             </tr>\
-    #             <tr>\
-    #               <td><p>100</p></td>\
-    #               <td><p id=\"row1col2\">100</p></td>\
-    #               <td><p id=\"row1col3\">100</p></td>\
-    #               <td><p id=\"row1col4\">100</p></td>\
-    #               <td><p id=\"row1col5\">100</p></td>\
-    #               <td><p id=\"row1col6\">100</p></td>\
-    #             </tr>\
-    #             <tr>\
-    #               <td><p id=\"row2col1\">200</p></td>\
-    #               <td><p id=\"row2col2\">200</p></td>\
-    #               <td><p id='row2col3'>200</p></td>\
-    #               <td><p id='row2col4'>200</p></td>\
-    #               <td><p id='row2col5'>200</p></td>\
-    #               <td><p id='row2col6'>200</p></td>\
-    #             </tr>\
-    #             <tr>\
-    #               <td><p id='row3col1'>300</p></td>\
-    #               <td><p id='row3col2'>300</p></td>\
-    #               <td><p id='row3col3'>300</p></td>\
-    #               <td><p id='row3col4'>300</p></td>\
-    #               <td><p id='row3col5'>300</p></td>\
-    #               <td><p id='row3col6'>300</p></td>\
-    #             </tr>\
-    #             <tr>\
-    #               <td><p id='row4col1'>400</p></td>\
-    #               <td><p id='row4col2'>400</p></td>\
-    #               <td><p id='row4col3'>400</p></td>\
-    #               <td><p id='row4col4'>400</p></td>\
-    #               <td><p id='row4col5'>400</p></td>\
-    #               <td><p id='row4col6'>400</p></td>\
-    #             </tr>\
-    #             <tr>\
-    #               <td><p id='row5col1'>500</p></td>\
-    #               <td><p id='row5col2'>500</p></td>\
-    #               <td><p id='row5col3'>500</p></td>\
-    #               <td><p id='row5col4'>500</p></td>\
-    #               <td><p id='row5col5'>500</p></td>\
-    #               <td><p id='row4col6'>500</p></td>\
-    #             </tr>\
-    #             </tbody>\
-    #           </table>"
 
 # takes as input for construction
 # question : str of question being asked
@@ -167,6 +119,7 @@ class JeopardyBoard():
     def __init__(self, questions, categories):
         self.questions = questions
         self.categories = categories
+    
 
 class JeopardyGame():
     def __init__(self, players):
@@ -178,7 +131,23 @@ class JeopardyGame():
     
 # when the first request is sent, a new jeopardy board is created
 # as well as a new ID for the players sent in the request
-
+def spin_and_update(board):
+    cats = list(range(len(board.categories)))
+    random.shuffle(cats)
+    for rand_cat_ind in cats:
+        rand_cat = board.categories[rand_cat_ind]
+        i = 0
+        for q in board.questions[rand_cat]:
+            if not q.answered:
+                # q.answered = True
+                new_q = q
+                new_q.answered = True
+                board.questions[rand_cat][i] = new_q
+                return (board, q)
+            else:
+                i += 1
+    return None
+    
 
 
 @APP.get("/")
@@ -204,14 +173,78 @@ async def setup(request: Request):
         not request.session.get("uid") in GLOBAL_CACHE
     ):
         print("leaving lol")
-        board = get_board_html()
-        return {"board": board, "players": ["Tom", "Jerry"]}
+        server_board = make_new_board(1)
+        board = get_board_html(server_board)
+        new_id =  str(uuid.uuid4())
+        GLOBAL_CACHE[new_id] = server_board
+        currently_playing = "<p>Currently playing : Tom, Jerry</p>"
+        return {"board": board, "players": currently_playing, "uid": new_id}
     
-    return SubmitResult(
-        success=True,
-        overwrite="",
-        message=""
-    )
+    return None
+
+@APP.post("/spin/")
+async def spin(request: Request):
+    print(vars(request))
+    body = await request.body()
+    print("how do i get uid : ", body)
+    # we need to create a new id to send back for future uses
+    # also need to put this id in the cache mapping to the 
+    # game state
+
+    if (
+        not request.session.get("uid") or
+        not request.session.get("uid") in GLOBAL_CACHE
+    ):
+        curr_id = str(body.decode("utf-8"))[1:-1]
+        print(curr_id)
+        a = "string"
+        print(a)
+        print(GLOBAL_CACHE)
+        curr_board = GLOBAL_CACHE[curr_id]
+        server_board, curr_q = spin_and_update(curr_board)
+        board = get_board_html(server_board)
+        GLOBAL_CACHE[curr_id] = server_board
+        currently_playing = "<p>Currently playing : Tom, Jerry</p>"
+        return {"board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_q.question}
+    
+    return None
+
+
+@APP.post("/guess/")
+async def guess(request: Request):
+    print(vars(request))
+    body = await request.body()
+    print("how do i get uid : ", body)
+    # we need to create a new id to send back for future uses
+    # also need to put this id in the cache mapping to the 
+    # game state
+
+
+    # the user has submitted a guess
+    # we want to validate it using the current question
+    # assign the proper scores
+    # and return the resulting board, scores, result, etc.
+
+    if (
+        not request.session.get("uid") or
+        not request.session.get("uid") in GLOBAL_CACHE
+    ):
+        curr_id = str(body.decode("utf-8"))[1:-1]
+        print(curr_id)
+        a = "string"
+        print(a)
+        print(GLOBAL_CACHE)
+        curr_board = GLOBAL_CACHE[curr_id]
+        server_board, curr_q = spin_and_update(curr_board)
+        board = get_board_html(server_board)
+        GLOBAL_CACHE[curr_id] = server_board
+        currently_playing = "<p>Currently playing : Tom, Jerry</p>"
+        return {"board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_q.question}
+    
+    return None
+
+
+
 
 
 if __name__ == '__main__':
@@ -219,4 +252,4 @@ if __name__ == '__main__':
     board = make_new_board(1)
     print(board)
     print(get_board_html(board))
-    # uvicorn.run(APP, host='0.0.0.0', port=PORT)
+    uvicorn.run(APP, host='0.0.0.0', port=PORT)
