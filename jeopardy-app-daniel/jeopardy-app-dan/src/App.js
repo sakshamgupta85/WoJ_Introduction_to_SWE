@@ -11,8 +11,8 @@ let been_set_up = false;
 
 let USER_ID = "";
 let CURR_CATEGORY = "CATEGORY";
-let CURR_PLAYER = "tom";
-
+let CURR_PLAYER = "";
+let GAME_PLAYERS = [];
 
 
 async function getGame(players) {
@@ -63,6 +63,21 @@ async function guess(uid, guess) {
       return res;
 }
 
+async function pick_category(uid, column) {
+    const res = await fetch(SERVER_ENDPOINT + "pick_category/", {
+        method: "POST", // *GET, POST, PUT, DELETE, etc.
+        mode: "cors", // no-cors, cors, *same-origin
+        cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+        redirect: "follow", // manual, *follow, error
+        referrer: "no-referrer", // no-referrer, *client
+        body: JSON.stringify([uid, column])
+      });
+      if (!res.ok) {
+        throw Error(res.statusText);
+      }
+      return res;
+}
+
 class App extends Component {
   constructor() {
     super();
@@ -79,7 +94,8 @@ class App extends Component {
       player_names:null,
       non_q_category: false,
       category_choice: false,
-      picking_player: null
+      picking_player: null,
+      picked_category: null
     };
     this.createGame = this.createGame.bind(this);
     this.spinWheel = this.spinWheel.bind(this);
@@ -87,6 +103,7 @@ class App extends Component {
     this.doChange = this.doChange.bind(this);
     this.set_player_names = this.set_player_names.bind(this)
     this.get_cat = this.get_cat.bind(this)
+    this.chooseCategory = this.chooseCategory.bind(this)
     // this.submitBatch = this.submitBatch.bind(this);
   }
 
@@ -104,6 +121,7 @@ class App extends Component {
         alert("Please enter only two different names, separated by a space.");
         return 0;
     }
+    GAME_PLAYERS = potential_player_names.split(" ")
 
     const res = await getGame(this.state.player_names);
     const to_use = await res.json();
@@ -153,16 +171,20 @@ class App extends Component {
         // UGH
         const rem = to_use.spins_rem;
         let picking_player = "";
-        if (CURR_CATEGORY === "PLAYER CHOICE") {
+        if (CURR_CATEGORY === "Player Choice") {
             picking_player = CURR_PLAYER;
         } else {
             // get the other player, not the current one (this is inelegant)
-            
+            if (CURR_PLAYER === GAME_PLAYERS[0]) {
+                picking_player = GAME_PLAYERS[1];
+            } else {
+                picking_player = GAME_PLAYERS[1];
+            }
         }
         
         this.setState({
             board: board,
-            wheel: 1,
+            wheel: null,
             scores: null,
             players: players,
             turns_rem: rem,
@@ -170,7 +192,7 @@ class App extends Component {
             guess: null,
             curr_question: null,
             scores:scores,
-            non_q_category: true,
+            non_q_category: false,
             category_choice: true,
             picking_player: picking_player
         })
@@ -224,7 +246,8 @@ set_player_names(event) {
 }
 
 get_cat(event) {
-    this.state.category_choice = event.target.value;
+    console.log(event);
+    this.state.picked_category = event.target.value;
 }
 
   async submitGuess() {
@@ -255,6 +278,45 @@ get_cat(event) {
     alert("Game over!! Congratulations to : " + to_use.winner);
     }
   }
+
+  async chooseCategory() {
+    console.log("from the text field: ", this.state.picked_category);
+    let choice = this.state.picked_category;
+    if (choice < 1 || choice > 6) {
+        alert("Please enter a number corresponding to the selected column, 1-6.");
+        this.state.picked_category = null;
+        return 1;
+    }
+    // inout was maybe valid, send a request to the backend endpoint for player selection
+    // make sure the selected category actually has questions left lol
+    const res = await pick_category(USER_ID, choice);
+    const to_use = await res.json();
+    console.log("RESULT OF picking");
+    console.log(to_use);
+    if (!to_use.success) {
+        alert("Something went wrong, please select a category that has questions remaining.");
+        this.state.picked_category = null;
+        return 1;
+    }
+    // we know the selected category was valid, so display the selected question with the right player guessing
+    const rem = to_use.spins_rem;
+    CURR_CATEGORY = to_use.cat;
+        this.setState({
+            board: to_use.board,
+            wheel: null,
+            scores: null,
+            players: to_use.players,
+            turns_rem: rem,
+            submit_answer: 1,
+            guess: null,
+            curr_question: to_use.curr_q,
+            scores:to_use.scores,
+            non_q_category: false,
+            category_choice: false,
+            picked_category: null
+        })
+
+}
 
 
 //   changeScore = (i, score) => () => {
@@ -331,7 +393,8 @@ get_cat(event) {
             {this.state.category_choice ? (
                 <div>
                     <p>The selected Category is {CURR_CATEGORY}. The player that gets to pick is {this.state.picking_player}.</p>
-                    <input type='text' value={this.state.picked_category} onChange={this.getCat}></input>
+                    <p>Please pick a column number, 1-6.</p>
+                    <input type='text' value={this.state.picked_category} onChange={this.get_cat}></input>
                     <Button color="primary" onClick={this.chooseCategory}>
                     Choose category
                     </Button>

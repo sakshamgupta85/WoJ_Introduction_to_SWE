@@ -125,8 +125,23 @@ def make_new_wheel(board):
         # we only want one sector for each of the non-question categories
         to_return.append(cat)
     
-    return to_return
+    return ["Player Choice", "Opponent Choice"]
     
+def get_question_from_column(board, column):
+    i = 0
+    board_cat = board.categories[column - 1]
+    # get the next, unanswered question from that category
+    for q in board.questions[board_cat]:
+        if not q.answered:
+            # q.answered = True
+            new_q = q
+            new_q.answered = True
+            board.questions[board_cat][i] = new_q
+            return (board, q, board_cat)
+        else:
+            i += 1
+    return None, None, None
+
 # takes as input for construction
 # question : str of question being asked
 # answer: str of answer to that question
@@ -343,6 +358,47 @@ async def guess(request: Request):
     return None
 
 
+@APP.post("/pick_category/")
+async def guess(request: Request):
+    print(vars(request))
+    body = await request.body()
+    split = body.decode("utf-8").split(",")
+    id, column = split[0], split[1]
+    print("how do i get uid : ", body)
+    # we need to create a new id to send back for future uses
+    # also need to put this id in the cache mapping to the 
+    # game state
+
+
+    # the user has submitted a guess
+    # we want to validate it using the current question
+    # assign the proper scores
+    # and return the resulting board, scores, result, etc.
+
+    if (
+        not request.session.get("uid") or
+        not request.session.get("uid") in GLOBAL_CACHE
+    ):
+        curr_id = id[2:-1]#str(id.decode("utf-8"))[1:-1]
+        # print(GLOBAL_CACHE)
+        curr_game = GLOBAL_CACHE[curr_id]
+        curr_board = curr_game.board
+        column = int(column[1:-2])
+        print("selected COLUMN : ", column)
+        curr_board, curr_question, board_cat = get_question_from_column(curr_board, column)
+        if not curr_question:
+            return {"success": False}
+        board = get_board_html(curr_board)
+        curr_game.board = curr_board
+        curr_game.curr_question = curr_question
+        currently_playing = get_players_html(curr_game.players)
+        curr_scores = get_scores_html(curr_game.round_total, curr_game.game_total)
+        GLOBAL_CACHE[curr_id] = curr_game
+        return {"success":True, "board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_question.question,\
+             "scores":curr_scores, "spins_rem": curr_game.spins_remaining, "cp": curr_game.curr_player, "cat":board_cat}
+
+    
+    return None
 
 
 
