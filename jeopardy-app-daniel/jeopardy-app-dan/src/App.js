@@ -7,18 +7,15 @@ import "./App.scss";
 
 const SERVER_ENDPOINT = "http://localhost:8666/";
 
-const players = ["Tom", "Jerry"];
-
 let been_set_up = false;
 
 let USER_ID = "";
 let CURR_CATEGORY = "CATEGORY";
 let CURR_PLAYER = "tom";
-// const [myguess, mysetGuess] = useState("");
 
 
 
-async function getGame() {
+async function getGame(players) {
     console.log("calling get game");
   const res = await fetch(SERVER_ENDPOINT + "setup/", {
     method: "POST", // *GET, POST, PUT, DELETE, etc.
@@ -78,17 +75,37 @@ class App extends Component {
       submit_answer: null,
       guess: null,
       curr_question: null,
-      scores:null
+      scores:null,
+      player_names:null,
+      non_q_category: false,
+      category_choice: false,
+      picking_player: null
     };
     this.createGame = this.createGame.bind(this);
     this.spinWheel = this.spinWheel.bind(this);
     this.submitGuess = this.submitGuess.bind(this);
     this.doChange = this.doChange.bind(this);
+    this.set_player_names = this.set_player_names.bind(this)
+    this.get_cat = this.get_cat.bind(this)
     // this.submitBatch = this.submitBatch.bind(this);
   }
 
+  validate_names(names) {
+      let names_split = names.split(" ")
+      return (names_split.length === 2) && (names_split[0] != names_split[1])
+  }
+
   async createGame() {
-    const res = await getGame();
+    // need to get the inputted player names
+    // could probably do a check on the input to make sure it isnt malicious
+    console.log("NAMES : ", this.state.player_names)
+    let potential_player_names = this.state.player_names
+    if (!this.validate_names(potential_player_names)) {
+        alert("Please enter only two different names, separated by a space.");
+        return 0;
+    }
+
+    const res = await getGame(this.state.player_names);
     const to_use = await res.json();
     console.log("got response");
     console.log(to_use)
@@ -115,23 +132,9 @@ class App extends Component {
         scores:scores
     })
     
-    console.log("resecived response");
-    // const data = await res.json();
-    // const pairs = data.pairs.map(x => [
-    //   x[0],
-    //   x[1],
-    //   x[2],
-    //   x[3],
-    //   Math.round(x[3] * 4) / 4
-    // ]);
-    // this.setState({
-    //   page: data.page,
-    //   pairs: fromJS(pairs)
-    // });
   }
 
   async spinWheel() {
-      console.log("huh");
 
       const res = await spin(USER_ID);
       const to_use = await res.json();
@@ -141,8 +144,62 @@ class App extends Component {
       const players = to_use.players;
       const quest = to_use.curr_q;
       const scores = to_use.scores;
-      const rem = to_use.spins_rem;
-      this.setState({
+      CURR_CATEGORY = to_use.cat;
+      CURR_PLAYER = to_use.cp;
+      if (
+          CURR_CATEGORY === "Opponent Choice" || 
+          CURR_CATEGORY === "Player Choice") {
+        // we need to solicit user input to pick a category
+        // UGH
+        const rem = to_use.spins_rem;
+        let picking_player = "";
+        if (CURR_CATEGORY === "PLAYER CHOICE") {
+            picking_player = CURR_PLAYER;
+        } else {
+            // get the other player, not the current one (this is inelegant)
+            
+        }
+        
+        this.setState({
+            board: board,
+            wheel: 1,
+            scores: null,
+            players: players,
+            turns_rem: rem,
+            submit_answer: null,
+            guess: null,
+            curr_question: null,
+            scores:scores,
+            non_q_category: true,
+            category_choice: true,
+            picking_player: picking_player
+        })
+      }
+      else if (
+          CURR_CATEGORY === "Bankrupt" || 
+          CURR_CATEGORY === "Spin Again" ||
+          CURR_CATEGORY === "Free Turn" ||
+          CURR_CATEGORY === "Lose a Turn") {
+        // these spin results all get rendered the same way
+        const rem = to_use.spins_rem;
+        console.log("non question cat");
+        this.setState({
+            board: board,
+            wheel: 1,
+            scores: null,
+            players: players,
+            turns_rem: rem,
+            submit_answer: null,
+            guess: null,
+            curr_question: null,
+            scores:scores,
+            non_q_category: true,
+            category_choice: false
+        })
+      } else {
+        // the cateogry must have been a question category so just render the page that way
+        const rem = to_use.spins_rem;
+        this.setState({
         board: board,
         wheel: null,
         scores: null,
@@ -151,21 +208,24 @@ class App extends Component {
         submit_answer: 1,
         guess: null,
         curr_question: quest,
-        scores:scores
-    })
-
-    
-    
-    // const res = await postBatch(payload);
-    // const data = await res.json();
-    // console.log(data);
-    // alert(`Submit Success: ${data.success} ${data.message}`);
+        scores:scores,
+        non_q_category: false,
+        category_choice: false
+        })
+      }
   }
 
 doChange(event){
     this.state.guess = event.target.value;
 }
 
+set_player_names(event) {
+    this.state.player_names = event.target.value;
+}
+
+get_cat(event) {
+    this.state.category_choice = event.target.value;
+}
 
   async submitGuess() {
       console.log("from the text field: ", this.state.guess);
@@ -173,10 +233,7 @@ doChange(event){
     const to_use = await res.json();
     console.log("RESULT OF SPINNING");
     console.log(to_use);
-    if (to_use.game_over) {
-
-        alert("Winner : ", to_use.winner);
-    }
+    
     const board = to_use.board;
     const players = to_use.players;
     const scores = to_use.scores;
@@ -191,6 +248,12 @@ doChange(event){
       guess: null,
       scores:scores
   })
+  if (to_use.game_over) {
+    console.log("~~~~~~~~~~~~~~~~~~~~~~");
+    console.log(to_use);
+    console.log(to_use.winner);
+    alert("Game over!! Congratulations to : " + to_use.winner);
+    }
   }
 
 
@@ -217,7 +280,7 @@ doChange(event){
             ) : (
                 <div>
                 <p>Enter names, separated by a space.</p>
-                <input>
+                <input type='text' value={this.state.players_input} onChange={this.set_player_names}></input>
                 </div>
             )}
             {this.state.turns_rem !== null ? (
@@ -257,6 +320,22 @@ doChange(event){
               <Button color="primary" onClick={this.spinWheel}>
               Spin!
             </Button>
+            ) : (
+              ""
+            )}
+            {this.state.non_q_category ? (
+              <p>The selected Category is {CURR_CATEGORY}. It's {CURR_PLAYER}'s turn to spin.</p>
+            ) : (
+              ""
+            )}
+            {this.state.category_choice ? (
+                <div>
+                    <p>The selected Category is {CURR_CATEGORY}. The player that gets to pick is {this.state.picking_player}.</p>
+                    <input type='text' value={this.state.picked_category} onChange={this.getCat}></input>
+                    <Button color="primary" onClick={this.chooseCategory}>
+                    Choose category
+                    </Button>
+                </div>
             ) : (
               ""
             )}
