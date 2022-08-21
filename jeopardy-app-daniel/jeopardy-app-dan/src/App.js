@@ -63,6 +63,22 @@ async function guess(uid, guess) {
       return res;
 }
 
+async function lose_a_turn(uid, token_lost) {
+    const res = await fetch(SERVER_ENDPOINT + "lose_a_turn/", {
+        method: "POST", // *GET, POST, PUT, DELETE, etc.
+        mode: "cors", // no-cors, cors, *same-origin
+        cache: "no-cache", // *default, no-cache, reload, force-cache, only-if-cached
+        redirect: "follow", // manual, *follow, error
+        referrer: "no-referrer", // no-referrer, *client
+        body: JSON.stringify([uid, token_lost])
+      });
+      if (!res.ok) {
+        throw Error(res.statusText);
+      }
+      return res;
+}
+
+
 async function pick_category(uid, column) {
     const res = await fetch(SERVER_ENDPOINT + "pick_category/", {
         method: "POST", // *GET, POST, PUT, DELETE, etc.
@@ -101,9 +117,11 @@ class App extends Component {
     this.spinWheel = this.spinWheel.bind(this);
     this.submitGuess = this.submitGuess.bind(this);
     this.doChange = this.doChange.bind(this);
-    this.set_player_names = this.set_player_names.bind(this)
-    this.get_cat = this.get_cat.bind(this)
-    this.chooseCategory = this.chooseCategory.bind(this)
+    this.set_player_names = this.set_player_names.bind(this);
+    this.get_cat = this.get_cat.bind(this);
+    this.chooseCategory = this.chooseCategory.bind(this);
+    this.lose_a_turn = this.lose_a_turn.bind(this);
+    this.lose_a_token = this.lose_a_token.bind(this);
     // this.submitBatch = this.submitBatch.bind(this);
   }
 
@@ -130,6 +148,7 @@ class App extends Component {
     console.log(to_use.board);
     const board = to_use.board;
     const players = to_use.players;
+    CURR_PLAYER = to_use.cp;
     USER_ID = to_use.uid;
     console.log(players);
     // ideally, the board, the players, everything else
@@ -185,7 +204,6 @@ class App extends Component {
         this.setState({
             board: board,
             wheel: null,
-            scores: null,
             players: players,
             turns_rem: rem,
             submit_answer: null,
@@ -205,19 +223,56 @@ class App extends Component {
         // these spin results all get rendered the same way
         const rem = to_use.spins_rem;
         console.log("non question cat");
-        this.setState({
-            board: board,
-            wheel: 1,
-            scores: null,
-            players: players,
-            turns_rem: rem,
-            submit_answer: null,
-            guess: null,
-            curr_question: null,
-            scores:scores,
-            non_q_category: true,
-            category_choice: false
-        })
+        if (CURR_CATEGORY === "Lose a Turn") {
+            if (to_use.status === 'no_tokens') {
+                // set the state of the board to say, turn lost and no tokens
+                this.setState({
+                    // board: board,
+                    // wheel: 1,
+                    // players: players,
+                    turns_rem: rem,
+                    submit_answer: null,
+                    guess: null,
+                    curr_question: null,
+                    // scores:scores,
+                    non_q_category: false,
+                    category_choice: false,
+                    lost_turn:true
+                })
+            } else {
+                //set the state of the board to sy "turn lost, use a token?"
+                this.setState({
+                    // board: board,
+                    // wheel: 1,
+                    // players: players,
+                    wheel:null,
+                    turns_rem: rem,
+                    submit_answer: null,
+                    guess: null,
+                    curr_question: null,
+                    // scores:scores,
+                    non_q_category: false,
+                    category_choice: false,
+                    lost_turn:false,
+                    losing_turn:true
+                })
+            }
+        } else {
+            this.setState({
+                board: board,
+                wheel: 1,
+                players: players,
+                turns_rem: rem,
+                submit_answer: null,
+                guess: null,
+                curr_question: null,
+                scores:scores,
+                non_q_category: true,
+                category_choice: false,
+                lost_a_turn:false
+            })
+        }
+        
       } else {
         // the cateogry must have been a question category so just render the page that way
         const rem = to_use.spins_rem;
@@ -269,7 +324,8 @@ get_cat(event) {
       turns_rem: rem,
       submit_answer: null,
       guess: null,
-      scores:scores
+      scores:scores,
+      lost_a_turn:false
   })
   if (to_use.game_over) {
     console.log("~~~~~~~~~~~~~~~~~~~~~~");
@@ -313,11 +369,39 @@ get_cat(event) {
             scores:to_use.scores,
             non_q_category: false,
             category_choice: false,
-            picked_category: null
+            picked_category: null,
+            lost_a_turn:false
         })
 
 }
 
+
+async lose_a_token(){
+    // send a request to the backend, we'll lose the token
+    let token_lost = 1;
+    const res = await lose_a_turn(USER_ID, token_lost);
+    const to_use = await res.json();
+    CURR_PLAYER = to_use.cp;
+    this.setState({
+        losing_turn:null,
+        wheel: 1,
+        
+    })
+}
+
+async lose_a_turn(){
+    // send a request to the backend, we'll lose the turn
+    let token_lost = 0;
+    const res = await lose_a_turn(USER_ID, token_lost);
+    const to_use = await res.json();
+    CURR_PLAYER = to_use.cp;
+    this.setState({
+        losing_turn:null,
+        wheel: 1,
+        lost_a_turn:true
+        
+    })
+}
 
 //   changeScore = (i, score) => () => {
 //     this.setState({
@@ -379,14 +463,37 @@ get_cat(event) {
               ""
             )}
             {this.state.wheel !== null ? (
-              <Button color="primary" onClick={this.spinWheel}>
-              Spin!
-            </Button>
+                <div>
+                    <p> It's {CURR_PLAYER}'s turn to spin.</p>
+                    <Button color="primary" onClick={this.spinWheel}>
+                    Spin!
+                    </Button>
+              </div>
             ) : (
               ""
             )}
             {this.state.non_q_category ? (
               <p>The selected Category is {CURR_CATEGORY}. It's {CURR_PLAYER}'s turn to spin.</p>
+            ) : (
+              ""
+            )}
+            {this.state.losing_turn ? (
+              <div>
+                <p>You landed on 'Lose a Turn!' Would you like to use a token?</p>
+                <Button color="primary" onClick={this.lose_a_token}>
+                Yes
+                </Button>
+                <Button color="secondary" onClick={this.lose_a_turn}>
+                No
+                </Button>
+              </div>
+            ) : (
+              ""
+            )
+
+            }
+            {this.state.lost_turn ? (
+              <p>You lost a turn! It's {CURR_PLAYER}'s turn to spin.</p>
             ) : (
               ""
             )}

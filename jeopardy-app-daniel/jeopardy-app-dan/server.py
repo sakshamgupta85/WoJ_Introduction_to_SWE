@@ -125,7 +125,7 @@ def make_new_wheel(board):
         # we only want one sector for each of the non-question categories
         to_return.append(cat)
     
-    return ["Player Choice", "Opponent Choice"]
+    return ["Lose a Turn", "Free Turn", "Free Turn"]
     
 def get_question_from_column(board, column):
     i = 0
@@ -182,6 +182,7 @@ class JeopardyGame():
         self.wheel = make_new_wheel(self.board)
         self.round_total = {player:0 for player in players}
         self.game_total = {player:0 for player in players}
+        self.player_free_turns = {player:0 for player in players}
     def next_player(self):
         if self.curr_player == self.players[0]:
             self.curr_player = self.players[1]
@@ -251,7 +252,8 @@ async def setup(request: Request):
         GLOBAL_CACHE[new_id] = curr_game
         currently_playing = get_players_html(curr_game.players)
         scores = get_scores_html(curr_game.round_total, curr_game.game_total)
-        return {"board": board, "players": currently_playing, "uid": new_id, "scores":scores, "spins_rem": curr_game.spins_remaining}
+        return {"board": board, "players": currently_playing, "uid": new_id, "scores":scores, \
+            "spins_rem": curr_game.spins_remaining, "cp":curr_game.curr_player}
     
     return None
 
@@ -272,10 +274,14 @@ async def spin(request: Request):
         server_board, curr_q, cat = spin_and_update(curr_game)
         if not server_board:
             server_board = make_new_board(2)
-            for i in range(len(curr_game.round_total)):
-             curr_game.game_total[i] += curr_game.round_total[i]
-            curr_game.round_total = [0, 0]
+            players = curr_game.round_total.keys()
+            for player in players:
+             curr_game.game_total[player] += curr_game.round_total[player]
+            
+            curr_game.round_total = {player:0 for player in players}
+            curr_game.wheel = make_new_wheel(server_board)
             server_board, curr_q, cat = spin_and_update(curr_game)
+            
 
         # wheel has been spun, now figure out the html and send it all back to the front end
         
@@ -285,11 +291,28 @@ async def spin(request: Request):
         curr_game.curr_question = curr_q
         curr_game.spins_remaining -= 1
         currently_playing = get_players_html(curr_game.players)
-        curr_scores = get_scores_html(curr_game.round_total, curr_game.game_total)
+        
         if cat in NON_QUESTION_CATEGORIES:
+            if cat == 'Bankrupt':
+                curr_player_score = curr_game.round_total[curr_game.curr_player]
+                if curr_player_score > 0:
+                    curr_game.round_total[curr_game.curr_player] = 0
+                curr_game.next_player()
+            if cat == 'Lose a Turn':
+                if curr_game.player_free_turns[curr_game.curr_player] < 1:
+                    curr_game.next_player()
+                    return {"cat":cat, "status":"no_tokens", "cp":curr_game.curr_player, "spins_rem": curr_game.spins_remaining} 
+                else:
+                    return {"cat":cat, "status":"tokens_available", "cp":curr_game.curr_player, "spins_rem": curr_game.spins_remaining} 
+            if cat == 'Free Turn':
+                curr_game.player_free_turns[curr_game.curr_player] += 1
+            if cat == 'Spin Again':
+                # we really don't have to do anything LOL tg
+                pass
             question_to_send = ""
         else:
             question_to_send = curr_q.question
+        curr_scores = get_scores_html(curr_game.round_total, curr_game.game_total)
         GLOBAL_CACHE[curr_id] = curr_game
         return {"board": board, "players": currently_playing, "uid": curr_id, "curr_q": question_to_send,\
              "scores":curr_scores, "spins_rem": curr_game.spins_remaining, "cp": curr_game.curr_player, "cat":cat}
@@ -319,16 +342,10 @@ async def guess(request: Request):
         not request.session.get("uid") in GLOBAL_CACHE
     ):
         curr_id = id[2:-1]#str(id.decode("utf-8"))[1:-1]
-        print(curr_id)
-        a = "string"
-        print(a)
-        print(GLOBAL_CACHE)
         curr_game = GLOBAL_CACHE[curr_id]
         curr_board = curr_game.board
         curr_question = curr_game.curr_question
-        print("quesrion : ", curr_question.question)
         guess = guess[1:-2]
-        print("they guessed : ", guess)
         # they placed a guess
         # let's validate it with the current question
         # and then let's update teh scores accordingly
@@ -345,6 +362,9 @@ async def guess(request: Request):
 
         curr_scores_resp = get_scores_html(curr_game.round_total, curr_game.game_total)
         if curr_game.spins_remaining == 0:
+            player_1_score = 0
+            player_2_score = 0
+
             if curr_scores[curr_game.players[0]] > curr_scores[curr_game.players[1]]:
                 winner = curr_game.players[0]
             else:
@@ -397,6 +417,40 @@ async def guess(request: Request):
         return {"success":True, "board": board, "players": currently_playing, "uid": curr_id, "curr_q": curr_question.question,\
              "scores":curr_scores, "spins_rem": curr_game.spins_remaining, "cp": curr_game.curr_player, "cat":board_cat}
 
+    
+    return None
+
+
+
+@APP.post("/lose_a_turn/")
+async def lose_a_turn(request: Request):
+    print(vars(request))
+    body = await request.body()
+    split = body.decode("utf-8").split(",")
+    id, token_lost = split[0], split[1]
+    print("~~~~~ lose_a_turn body ~~~~")
+    print(body)
+    curr_id = id[2:-1]#str(id.decode("utf-8"))[1:-1]
+    # print(GLOBAL_CACHE)
+    curr_game = GLOBAL_CACHE[curr_id]
+    token_lost = int(token_lost[:-1])
+    # we need to create a new id to send back for future uses
+    # also need to put this id in the cache mapping to the 
+    # game state
+
+    if (
+        not request.session.get("uid") or
+        not request.session.get("uid") in GLOBAL_CACHE
+    ):
+        if token_lost:
+            # remove a token from the current player's stash
+            curr_game.player_free_turns[curr_game.curr_player] -= 1
+            return {"cp": curr_game.curr_player}
+        else:
+            # move on to the next player
+            curr_game.next_player()
+            return {"cp": curr_game.curr_player}
+        
     
     return None
 
