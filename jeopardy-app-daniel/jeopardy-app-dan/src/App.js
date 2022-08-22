@@ -175,121 +175,155 @@ class App extends Component {
 
       const res = await spin(USER_ID);
       const to_use = await res.json();
-      console.log("RESULT OF SPINNING");
-      console.log(to_use);
-      const board = to_use.board;
-      const players = to_use.players;
-      const quest = to_use.curr_q;
-      const scores = to_use.scores;
-      CURR_CATEGORY = to_use.cat;
-      CURR_PLAYER = to_use.cp;
-      if (
-          CURR_CATEGORY === "Opponent Choice" || 
-          CURR_CATEGORY === "Player Choice") {
-        // we need to solicit user input to pick a category
-        // UGH
+      if (to_use.game_over) {
+        console.log("~~~~~~~~~~~~~~~~~~~~~~");
+        console.log(to_use);
+        console.log(to_use.winner);
+        alert("Game over!! Congratulations to : " + to_use.winner);
+      }
+      else if (to_use.round_over) {
+          // we've got a new board, and we're ready for the first spin
+          // i dont care if you were in the middle of answering a question the round is over
+          // we reached 0 spins left 
+          const board = to_use.board;
+        const players = to_use.players;
         const rem = to_use.spins_rem;
-        let picking_player = "";
-        if (CURR_CATEGORY === "Player Choice") {
-            picking_player = CURR_PLAYER;
-        } else {
-            // get the other player, not the current one (this is inelegant)
-            if (CURR_PLAYER === GAME_PLAYERS[0]) {
-                picking_player = GAME_PLAYERS[1];
-            } else {
-                picking_player = GAME_PLAYERS[1];
-            }
-        }
-        
-        this.setState({
+        const scores = to_use.scores;
+        CURR_CATEGORY = to_use.cat;
+        CURR_PLAYER = to_use.cp;
+          this.setState({
             board: board,
-            wheel: null,
+            wheel: 1,
             players: players,
             turns_rem: rem,
             submit_answer: null,
             guess: null,
             curr_question: null,
             scores:scores,
-            non_q_category: false,
-            category_choice: true,
-            picking_player: picking_player
+            non_q_category: null,
+            category_choice: null,
+            lost_turn:null
         })
-      }
-      else if (
-          CURR_CATEGORY === "Bankrupt" || 
-          CURR_CATEGORY === "Spin Again" ||
-          CURR_CATEGORY === "Free Turn" ||
-          CURR_CATEGORY === "Lose a Turn") {
-        // these spin results all get rendered the same way
-        const rem = to_use.spins_rem;
-        console.log("non question cat");
-        if (CURR_CATEGORY === "Lose a Turn") {
-            if (to_use.status === 'no_tokens') {
-                // set the state of the board to say, turn lost and no tokens
-                this.setState({
-                    // board: board,
-                    // wheel: 1,
-                    // players: players,
-                    turns_rem: rem,
-                    submit_answer: null,
-                    guess: null,
-                    curr_question: null,
-                    // scores:scores,
-                    non_q_category: false,
-                    category_choice: false,
-                    lost_turn:true
-                })
-            } else {
-                //set the state of the board to sy "turn lost, use a token?"
-                this.setState({
-                    // board: board,
-                    // wheel: 1,
-                    // players: players,
-                    wheel:null,
-                    turns_rem: rem,
-                    submit_answer: null,
-                    guess: null,
-                    curr_question: null,
-                    // scores:scores,
-                    non_q_category: false,
-                    category_choice: false,
-                    lost_turn:false,
-                    losing_turn:true
-                })
-            }
-        } else {
-            this.setState({
-                board: board,
-                wheel: 1,
-                players: players,
-                turns_rem: rem,
-                submit_answer: null,
-                guess: null,
-                curr_question: null,
-                scores:scores,
-                non_q_category: true,
-                category_choice: false,
-                lost_a_turn:false
-            })
-        }
-        
+
       } else {
-        // the cateogry must have been a question category so just render the page that way
-        const rem = to_use.spins_rem;
-        this.setState({
-        board: board,
-        wheel: null,
-        scores: null,
-        players: players,
-        turns_rem: rem,
-        submit_answer: 1,
-        guess: null,
-        curr_question: quest,
-        scores:scores,
-        non_q_category: false,
-        category_choice: false
-        })
+        const board = to_use.board;
+        const players = to_use.players;
+        const quest = to_use.curr_q;
+        const scores = to_use.scores;
+        CURR_CATEGORY = to_use.cat;
+        CURR_PLAYER = to_use.cp;
+        if (
+            CURR_CATEGORY === "Opponent Choice" || 
+            CURR_CATEGORY === "Player Choice") {
+          // we need to solicit user input to pick a category
+          // UGH
+          const rem = to_use.spins_rem;
+          let picking_player = "";
+          if (CURR_CATEGORY === "Player Choice") {
+              picking_player = CURR_PLAYER;
+          } else {
+              // get the other player, not the current one (this is inelegant)
+              if (CURR_PLAYER === GAME_PLAYERS[0]) {
+                  picking_player = GAME_PLAYERS[1];
+              } else {
+                  picking_player = GAME_PLAYERS[0];
+              }
+          }
+          
+          this.setState({
+              board: board,
+              wheel: null,
+              players: players,
+              turns_rem: rem,
+              submit_answer: null,
+              guess: null,
+              curr_question: null,
+              scores:scores,
+              non_q_category: false,
+              category_choice: true,
+              picking_player: picking_player
+          })
+        }
+        else if (
+            CURR_CATEGORY === "Bankrupt" || 
+            CURR_CATEGORY === "Spin Again" ||
+            CURR_CATEGORY === "Free Turn" ||
+            CURR_CATEGORY === "Lose a Turn") {
+          // these spin results all get rendered the same way
+          const rem = to_use.spins_rem;
+          console.log("non question cat");
+          if (CURR_CATEGORY === "Lose a Turn") {
+              if (to_use.status === 'no_tokens') {
+                  // set the state of the board to say, turn lost and no tokens
+                  this.setState({
+                      // board: board,
+                      // wheel: 1,
+                      // players: players,
+                      turns_rem: rem,
+                      submit_answer: null,
+                      guess: null,
+                      curr_question: null,
+                      // scores:scores,
+                      non_q_category: false,
+                      category_choice: false,
+                      lost_turn:true
+                  })
+              } else {
+                  //set the state of the board to sy "turn lost, use a token?"
+                  this.setState({
+                      // board: board,
+                      // wheel: 1,
+                      // players: players,
+                      wheel:null,
+                      turns_rem: rem,
+                      submit_answer: null,
+                      guess: null,
+                      curr_question: null,
+                      // scores:scores,
+                      non_q_category: false,
+                      category_choice: false,
+                      lost_turn:null,
+                      losing_turn:true
+                  })
+              }
+          } else {
+              this.setState({
+                  board: board,
+                  wheel: 1,
+                  players: players,
+                  turns_rem: rem,
+                  submit_answer: null,
+                  guess: null,
+                  curr_question: null,
+                  scores:scores,
+                  non_q_category: true,
+                  category_choice: false,
+                  lost_turn:null
+              })
+          }
+          
+        } else {
+          // the cateogry must have been a question category so just render the page that way
+          const rem = to_use.spins_rem;
+          this.setState({
+          board: board,
+          wheel: null,
+          scores: null,
+          players: players,
+          turns_rem: rem,
+          submit_answer: 1,
+          guess: null,
+          curr_question: quest,
+          scores:scores,
+          non_q_category: false,
+          category_choice: false,
+          lost_turn:null
+          })
+        }
       }
+      console.log("RESULT OF SPINNING");
+      console.log(to_use);
+      
   }
 
 doChange(event){
@@ -316,6 +350,7 @@ get_cat(event) {
     const players = to_use.players;
     const scores = to_use.scores;
     const rem = to_use.spins_rem;
+    CURR_PLAYER = to_use.cp;
     this.setState({
       board: board,
       wheel: 1,
@@ -325,14 +360,9 @@ get_cat(event) {
       submit_answer: null,
       guess: null,
       scores:scores,
-      lost_a_turn:false
+      lost_turn:null
   })
-  if (to_use.game_over) {
-    console.log("~~~~~~~~~~~~~~~~~~~~~~");
-    console.log(to_use);
-    console.log(to_use.winner);
-    alert("Game over!! Congratulations to : " + to_use.winner);
-    }
+  
   }
 
   async chooseCategory() {
@@ -370,7 +400,7 @@ get_cat(event) {
             non_q_category: false,
             category_choice: false,
             picked_category: null,
-            lost_a_turn:false
+            lost_turn:null
         })
 
 }
@@ -398,7 +428,7 @@ async lose_a_turn(){
     this.setState({
         losing_turn:null,
         wheel: 1,
-        lost_a_turn:true
+        lost_turn:true
         
     })
 }
@@ -424,9 +454,22 @@ async lose_a_turn(){
             
                 </div>
             ) : (
-                <div>
-                <p>Enter names, separated by a space.</p>
-                <input type='text' value={this.state.players_input} onChange={this.set_player_names}></input>
+                <div id="landing_page">
+                    <center> 
+                    <img className="logo" src={require("./logo.png")} alt="Site Logo">
+                    </img>
+                    </center>
+                    <body> 
+                    <center> <h1>Welcome to the Wheel of Jeopardy!</h1>
+                    <h2>
+                        Please enter the names of players 1 and 2 here, separated by a single space:
+                    </h2>
+                    <input className="nameInput" type='text' value={this.state.players_input} onChange={this.set_player_names}></input>
+                    <br></br>
+                    <a href={require("./WheelOfJeopardy.pdf")}>Rulebook</a></center>
+
+                    </body>
+                
                 </div>
             )}
             {this.state.turns_rem !== null ? (
@@ -442,9 +485,13 @@ async lose_a_turn(){
             {been_set_up ? (
                 ""
             ) : (
-                <Button color="primary" onClick={this.createGame}>
-                Play!
-              </Button>
+                <div>
+                    <center>
+                        <Button color="primary" onClick={this.createGame}>
+                            Play!
+                        </Button>
+                    </center>
+              </div>
             )}
             {this.state.scores !== null ? (
               <div dangerouslySetInnerHTML={{ __html: this.state.scores }}>
@@ -463,11 +510,13 @@ async lose_a_turn(){
               ""
             )}
             {this.state.wheel !== null ? (
-                <div>
+                <div><center>
                     <p> It's {CURR_PLAYER}'s turn to spin.</p>
+                    <br></br>
                     <Button color="primary" onClick={this.spinWheel}>
                     Spin!
                     </Button>
+                    </center>
               </div>
             ) : (
               ""
@@ -498,25 +547,31 @@ async lose_a_turn(){
               ""
             )}
             {this.state.category_choice ? (
-                <div>
+                <div> <center>
                     <p>The selected Category is {CURR_CATEGORY}. The player that gets to pick is {this.state.picking_player}.</p>
                     <p>Please pick a column number, 1-6.</p>
                     <input type='text' value={this.state.picked_category} onChange={this.get_cat}></input>
                     <Button color="primary" onClick={this.chooseCategory}>
                     Choose category
                     </Button>
+                    </center>
                 </div>
             ) : (
               ""
             )}
             {this.state.submit_answer !== null ? (
                 <div>
+                    <center>
             <p>The selected Category is {CURR_CATEGORY}. It's {CURR_PLAYER}'s turn to guess.</p>
+            <br></br>
             <p>The question is : {this.state.curr_question}.</p>
+            <br></br>
             <input type='text' value={this.state.guess} onChange={this.doChange}></input>
+            <br></br>
               <Button color="primary" onClick={this.submitGuess}>
               Submit!
             </Button>
+            </center>
             </div>
             ) : (
               ""

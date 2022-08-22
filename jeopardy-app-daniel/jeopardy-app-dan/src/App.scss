@@ -28,3 +28,35 @@
 .App-link {
   color: #09d3ac;
 }
+
+
+.logo {
+  width: 300px;
+  height: 300px;
+}
+.nameInput{
+  width: 500px;
+  height: 50px;
+  border-radius: 12px;
+  font-size: 18px;
+  text-align: center;
+}
+
+#jeoBoard {
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+}
+
+#jeoBoard td, #customers th {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+#jeoBoard th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-align: left;
+  background-color: #0439aa;
+  color: white;
+}
